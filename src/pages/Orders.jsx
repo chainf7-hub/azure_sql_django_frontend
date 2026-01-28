@@ -200,6 +200,7 @@ const Orders = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isWizardOpen, setIsWizardOpen] = useState(false);
+    const [editOrder, setEditOrder] = useState(null);
 
     useEffect(() => {
         fetchOrders();
@@ -273,6 +274,7 @@ const Orders = () => {
                                     </div>
                                 </td>
                                 <td className="p-4 text-right">
+                                    <button onClick={() => setEditOrder(order)} className="text-primary hover:text-white transition-colors mr-3">Edit</button>
                                     <button onClick={() => handleDelete(order.id)} className="text-slate-500 hover:text-red-500 transition-colors">Delete</button>
                                 </td>
                             </tr>
@@ -292,6 +294,13 @@ const Orders = () => {
                 isOpen={isWizardOpen}
                 onClose={() => setIsWizardOpen(false)}
                 onOrderCreated={fetchOrders}
+            />
+
+            <EditOrderModal
+                isOpen={!!editOrder}
+                onClose={() => setEditOrder(null)}
+                order={editOrder}
+                onOrderUpdated={fetchOrders}
             />
         </div>
     );

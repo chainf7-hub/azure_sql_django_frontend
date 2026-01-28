@@ -2,6 +2,7 @@ import React from 'react';
 import { LayoutDashboard, Store, ShoppingBag, Users, ShoppingCart, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/Card';
 import { Link } from 'react-router-dom';
+import { storeService, productService, orderService, userService } from '../services/api';
 
 const StatCard = ({ title, value, icon: Icon, to, color }) => (
     <Link to={to} className="block group">
@@ -20,12 +21,45 @@ const StatCard = ({ title, value, icon: Icon, to, color }) => (
 );
 
 const Dashboard = () => {
-    // Mock data for initial display
+    const [counts, setCounts] = useState({ stores: 0, products: 0, orders: 0, users: 0 });
+    const [recentOrders, setRecentOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            try {
+                const [stores, products, orders, users] = await Promise.all([
+                    storeService.getAll(),
+                    productService.getAll(),
+                    orderService.getAll(),
+                    userService.getAll()
+                ]);
+
+                setCounts({
+                    stores: stores.length,
+                    products: products.length,
+                    orders: orders.length,
+                    users: users.length
+                });
+
+                // Get last 5 orders for recent activity
+                const sortedOrders = [...orders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                setRecentOrders(sortedOrders.slice(0, 5));
+            } catch (error) {
+                console.error('Failed to fetch dashboard data', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, []);
+
     const stats = [
-        { title: 'Total Stores', value: '12', icon: Store, to: '/stores', color: 'from-blue-500 to-cyan-500' },
-        { title: 'Total Products', value: '48', icon: ShoppingBag, to: '/products', color: 'from-purple-500 to-pink-500' },
-        { title: 'Active Orders', value: '24', icon: ShoppingCart, to: '/orders', color: 'from-orange-500 to-red-500' },
-        { title: 'Total Users', value: '156', icon: Users, to: '/users', color: 'from-emerald-500 to-green-500' },
+        { title: 'Total Stores', value: counts.stores.toString(), icon: Store, to: '/stores', color: 'from-blue-500 to-cyan-500' },
+        { title: 'Total Products', value: counts.products.toString(), icon: ShoppingBag, to: '/products', color: 'from-purple-500 to-pink-500' },
+        { title: 'Active Orders', value: counts.orders.toString(), icon: ShoppingCart, to: '/orders', color: 'from-orange-500 to-red-500' },
+        { title: 'Total Users', value: counts.users.toString(), icon: Users, to: '/users', color: 'from-emerald-500 to-green-500' },
     ];
 
     return (
@@ -49,15 +83,24 @@ const Dashboard = () => {
                             <h3 className="text-xl font-semibold text-white">Recent Activity</h3>
                         </div>
                         <div className="space-y-4">
-                            {[1, 2, 3].map((i) => (
-                                <div key={i} className="flex items-center gap-4 p-4 rounded-lg bg-slate-800/50 border border-slate-700/50">
-                                    <div className="w-2 h-2 rounded-full bg-primary" />
-                                    <div className="flex-1">
-                                        <p className="text-sm text-white">New order received #102{i}</p>
-                                        <p className="text-xs text-slate-500">2 minutes ago</p>
+                            {recentOrders.length === 0 ? (
+                                <p className="text-slate-500 text-sm">No recent activity.</p>
+                            ) : (
+                                recentOrders.map((order) => (
+                                    <div key={order.id} className="flex items-center gap-4 p-4 rounded-lg bg-slate-800/50 border border-slate-700/50">
+                                        <div className={`w-2 h-2 rounded-full ${order.status === 'COMPLETED' ? 'bg-green-500' :
+                                                order.status === 'PENDING' ? 'bg-yellow-500' : 'bg-slate-500'
+                                            }`} />
+                                        <div className="flex-1">
+                                            <p className="text-sm text-white">Order #{order.id} - {order.status}</p>
+                                            <p className="text-xs text-slate-500">{new Date(order.created_at).toLocaleDateString()}</p>
+                                        </div>
+                                        <div className="text-xs text-slate-400">
+                                            {order.items ? order.items.length : 0} items
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </CardContent>
                 </Card>
